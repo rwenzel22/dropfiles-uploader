@@ -1,0 +1,112 @@
+.df-container, .df-container *, .df-container ::after, .df-container ::before {
+    box-sizing: border-box;
+}
+
+.df-container {
+    width: 100%;
+    height: 100%;
+    background-color: #fafafa;
+    border: 2px solid #c5c5c5;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.df-container .df-drop-area {
+    width: 100%;
+    height: 100%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.df-files {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.df-file {
+    padding: 8px;
+    border-bottom: 1px solid #e3e3e3;
+}
+
+.df-file-wrapper {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.df-file-thumbnail > img {
+    width: 100%;
+    min-width: 100%;
+    height: 100%;
+}
+
+.df-file-thumbnail > svg {
+    color: #343434;
+}
+
+.df-file-data {
+    width: 100%;
+    padding: 12px 8px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 4px;
+}
+
+.df-file-progress-container {
+    width: 100%;
+    background-color: #f1f1f1;
+    border-radius: 18px;
+}
+
+.df-file-progress-bar {
+    height: 4px;
+    width: 0%;
+}
+
+.df-file-info {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.df-file-name {
+    display: flex;
+    flex-direction: column;
+    color: #343434;
+    gap: 4px;
+    min-width: 0;
+}
+
+.df-file-name span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+}
+
+.df-file-name small {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.df-file-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    width: 32px;
+    height: 32px;
+}
