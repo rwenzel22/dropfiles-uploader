@@ -33,12 +33,25 @@
                     acceptedFiles: 'Unsupported file extension. The file must have the extension .{fileExtension}, supported extensions are [{acceptedFiles}].',
                 }
             },
-            events: {}
+            events: {
+                onInit: () => {},
+                onDestroy: () => {},
+                onRestart: () => {},
+                onFileAccepted: () => {},
+                onFileError: () => {},
+                onFileAdded: () => {},
+                onFileEnqueued: () => {},
+                onUploadSuccess: () => {},
+                onUploadError: () => {},
+                onUploadProgress: () => {},
+            }
         }, options);
 
         var privateFunctions = {
-            debugLog: function() {
-
+            debugLog: function(log) {
+                if (settings.debug) {
+                    console.log(log);
+                }
             },
             appendFilesToList: async function() {
                 const $fileListDiv = $element.find('.df-files');
@@ -87,11 +100,11 @@
                             </div>\
                         </div>\
                     ');
-                    const $fileListItem = $fileListDiv.append(template);
+                    $fileListDiv.append(template);
                     
                     filesQueue[i].status = newStatus;
                     filesQueue[i].displayed = true;
-                    filesQueue[i].$element = $fileListItem;
+                    filesQueue[i].$element = template;
                 }
 
                 privateFunctions.enqueueFiles();
@@ -166,24 +179,76 @@
                 return message;
             },
             enqueueFiles: function() {
-                for (let i = 0; i < filesQueue.length; i++) {
-                    const fileObject = filesQueue[i];
-                    if (fileObject.status === 'added') {
-                        console.log(fileObject);
-                        const $progressBar = $(`
-                            <div class="df-file-progress-container">
-                                <div class="df-file-progress-bar" style="width: 0;"></div>
-                            </div>
-                        `);
-                        $(fileObject.$element).find('.df-file-data').append($progressBar);
-                        $(fileObject.$element).find('.df-file-status').html('0%');
+                if (settings.url) {
+                    for (let i = 0; i < filesQueue.length; i++) {
+                        const fileObject = filesQueue[i];
+                        if (fileObject.status === 'added') {
+                            const $progressBar = $(`
+                                <div class="df-file-progress-container">
+                                    <div class="df-file-progress-bar" style="width: 0;"></div>
+                                </div>
+                            `);
+                            $(fileObject.$element).find('.df-file-data').append($progressBar);
+                            $(fileObject.$element).find('.df-file-status').html('0%');
+    
+                            filesQueue[i].$progressBar = $progressBar;
+                            filesQueue[i].status = 'enqueued';
+                        }
+                    }
+                    
+                    privateFunctions.proccessQueue();
+                } else {
+                    for (let i = 0; i < filesQueue.length; i++) {
+                        const fileObject = filesQueue[i];
+                        if (fileObject.status === 'added') {
+                            let newStatus = (fileObject.status === 'added' ? 'success' : 'error');
+                            let statusIcon = privateFunctions.getStatusIcon(newStatus);
+                            const fileList = new DataTransfer();
+                            fileList.items.add(fileObject.file);
+                            const $inputFile = $(`<input type="file" style="display:none;" name="${settings.paramName}${(settings.maxFiles === 1 ? '' : '[]' )}">`);
 
-                        filesQueue[i].$progressBar = $progressBar;
-                        filesQueue[i].status = 'enqueued';
+                            $inputFile[0].files = fileList.files;
+                            $(fileObject.$element).find('.df-file-data').append($inputFile);
+                            $(fileObject.$element).find('.df-file-status').html(statusIcon);
+    
+                            filesQueue[i].status = newStatus;
+                        }
                     }
                 }
-                console.log(filesQueue);
-            }
+            },
+            proccessQueue: function() {
+                const multipleUpload = settings.request.multipleUpload;
+                const parallelUploads = settings.request.parallelUploads;
+                const enqueuedFiles = filesQueue.filter(file => file.status === 'enqueued');
+                enqueuedFiles.forEach(enqueuedFile => {
+                    const fileToUpdate = filesQueue.find(file => file.hash === enqueuedFile.hash);
+                    if (fileToUpdate) {
+                        fileToUpdate.status = 'processing';
+                    }
+                });
+                const filesToSend = [];
+            
+                if (!multipleUpload) {
+                    for (let i = 0; i < enqueuedFiles.length; i++) {
+                        filesToSend.push(enqueuedFiles[i]);
+                    }
+                    privateFunctions.sendRequest(filesToSend);
+                } else if (parallelUploads !== null && parallelUploads > 0) {
+                    for (let i = 0; i < enqueuedFiles.length; i += parallelUploads) {
+                        const chunk = enqueuedFiles.slice(i, i + parallelUploads);
+                        const chunkFiles = chunk.map(item => item);
+                        privateFunctions.sendRequest(chunkFiles);
+                    }
+                } else {
+                    for (let i = 0; i < enqueuedFiles.length; i++) {
+                        const file = enqueuedFiles[i];
+                        privateFunctions.sendRequest([file]);
+                    }
+                }
+            },
+            sendRequest: function(files) {
+                console.log('Sending request with files:', files);
+            },
         };
 
         var methods = {
@@ -226,13 +291,14 @@
                         e.stopPropagation();
                     });
                 }
-                console.log('dropfilesUploader init');
+
+                privateFunctions.debugLog('dropfilesUploader init');
             },
             destroy: function() {
-                console.log('dropfilesUploader destroy');
+                privateFunctions.debugLog('dropfilesUploader destroy');
             },
             restart: function() {
-                console.log('dropfilesUploader restart');
+                privateFunctions.debugLog('dropfilesUploader restart');
             },
             enqueueFiles: function() {
                 
