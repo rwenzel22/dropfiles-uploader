@@ -9,13 +9,14 @@
                 method: 'POST',
                 timeout: null,
                 headers: null,
+                withCredentials: false,
                 multipleUpload: false,
                 parallelUploads: 2,
             },
             droppable: true,
             paramName: 'file',
             maxFiles: null,
-            maxFilesize: 5,
+            maxFilesize: null,
             filesizeBase: 1000,
             acceptedFiles: null,
             debug: false,
@@ -25,7 +26,9 @@
                 height: 60,
                 object_fit: 'cover',
             },
-            styles: {},
+            styles: {
+                progressBarColor: 'rgba(245,158,11,1)',
+            },
             lang: {
                 message: 'Drag or click to add files here',
                 errors: {
@@ -169,13 +172,22 @@
                 return sizeInBytes.toFixed(2) + ' ' + sizes[i];
             },
             translateMessages: function(errorCode, variables) {
+                let prefix = errorCode;
                 let message = 'Undefined error.';
-                if (settings.lang.errors[errorCode]) {
-                    message = settings.lang.errors[errorCode];
+                if (errorCode.includes('.')) {
+                    prefix = errorCode.split('.')[0];
+                    target = errorCode.split('.')[1];
+                }
+                if (settings.lang[prefix] !== undefined) {
+                    message = settings.lang[prefix];
+                    if (typeof settings.lang[prefix] === 'object') {
+                        message = settings.lang[prefix][target];
+                    }
                     for (var key in variables) {
                         message = message.replace('{' + key + '}', variables[key]);
                     }
                 }
+
                 return message;
             },
             enqueueFiles: function() {
@@ -196,7 +208,9 @@
                         }
                     }
                     
-                    privateFunctions.proccessQueue();
+                    if (settings.autoProcessQueue) {
+                        privateFunctions.proccessQueue();
+                    }
                 } else {
                     for (let i = 0; i < filesQueue.length; i++) {
                         const fileObject = filesQueue[i];
@@ -233,7 +247,7 @@
                         filesToSend.push(enqueuedFiles[i]);
                     }
                     privateFunctions.sendRequest(filesToSend);
-                } else if (parallelUploads !== null && parallelUploads > 0) {
+                } else if (parallelUploads && parallelUploads > 0) {
                     for (let i = 0; i < enqueuedFiles.length; i += parallelUploads) {
                         const chunk = enqueuedFiles.slice(i, i + parallelUploads);
                         const chunkFiles = chunk.map(item => item);
@@ -248,6 +262,109 @@
             },
             sendRequest: function(files) {
                 console.log('Sending request with files:', files);
+
+                var formData = new FormData();
+
+                if (!settings.maxFiles || settings.maxFiles > 1) {
+                    for (var i = 0; i < files.length; i++) {
+                        formData.append(settings.paramName+'[]', files[i].file);
+                    } 
+                } else {
+                    formData.append(settings.paramName, files.file);
+                }
+
+                var xhr = new XMLHttpRequest();
+
+                xhr.timeout = settings.request.timeout??0; 
+
+                xhr.upload.addEventListener('progress', function(event) {
+                    console.log(event);
+                    if (event.lengthComputable) {
+                        files.forEach(function(file) {
+                            if (file.status === 'processing') {
+                                console.log(file, event.loaded, file.file.size);
+                                var percentComplete =  Math.floor((event.loaded / event.total) * 100);
+                                privateFunctions.updateFileProgress(file, percentComplete);
+                            }
+                        });
+                    }
+                });
+
+                xhr.addEventListener('load', function() {
+                    if (xhr.status === 200) {
+                        files.forEach(function(file) {
+                            if (file.status === 'processing') {
+                                file.status = 'success';
+                                privateFunctions.updateFileProgress(file, 100);
+                            }
+                        });
+                    } else {
+                        files.forEach(function(file) {
+                            if (file.status === 'processing') {
+                                file.status = 'error';
+                                privateFunctions.updateFileProgress(file, 100);
+                            }
+                        });
+                    }
+
+                    // console.log('Request concluída:', xhr.responseText);
+                });
+
+                xhr.addEventListener('timeout', function() {
+                    console.log('Timeout da request');
+                });
+
+                xhr.addEventListener('error', function() {
+                    console.log('Erro na request');
+                    // Aqui você pode adicionar o código para lidar com a falha da request
+                    // Por exemplo, atualizar o status dos arquivos para error
+                    files.forEach(function(file) {
+                        if (file.status === 'processing') {
+                            file.status = 'error';
+                            privateFunctions.updateFileProgress(file, 100);
+                        }
+                    });
+                });
+
+                xhr.open(settings.request.method, settings.url, true);
+
+                console.log('settings.request.headers', settings.request.headers);
+                if (
+                    (settings.request.headers) &&
+                    (typeof settings.request.headers === 'object')
+                ) {
+                    for (const key in settings.request.headers) {
+                        const header = settings.request.headers[key];
+                        xhr.setRequestHeader(key, header);
+                    }
+                }
+
+                xhr.setRequestHeader('Cache-Control', 'no-cache');
+
+                xhr.send(formData);
+            },
+            updateFileProgress: function(file, percentage) {
+                if (file.status === 'processing') {
+                    file.$element.find('.df-file-status').html(percentage+'%');
+                } else {
+                    file.$element.find('.df-file-status').html(privateFunctions.getStatusIcon(file.status));
+                }
+                privateFunctions.updateRequestProgressBar(file, percentage);
+            },
+            updateRequestProgressBar: function(file, percentage) {
+                console.log(file, percentage);
+                let bgColor = '';
+                if (file.status === 'processing') {
+                    bgColor = settings.styles.progressBarColor;
+                } else {
+                    percentage = 100;
+                    bgColor = (file.status === 'success' ? 'rgba(61,178,148,1)' : 'rgba(239,68,68,1)')
+                }
+
+                file.$progressBar.children().css({
+                    'width': percentage + '%',
+                    'background-color': bgColor
+                });
             },
         };
 
@@ -301,10 +418,10 @@
                 privateFunctions.debugLog('dropfilesUploader restart');
             },
             enqueueFiles: function() {
-                
+                privateFunctions.enqueueFiles();
             },
             proccessQueue: function() {
-                
+                privateFunctions.proccessQueue();
             },
             addFile: function(file) {
                 const maxFilesize = settings.maxFilesize;
@@ -314,7 +431,10 @@
                 var errors = [];
                 const fileHash = privateFunctions.createFileHash();
 
-                if (file.size > maxSizeBytes) {
+                if (
+                    settings.maxFilesize &&
+                    file.size > maxSizeBytes
+                ) {
                     fileStatus = 'error';
                     errors.push(privateFunctions.translateMessages('errors.maxFilesize', {filesize: privateFunctions.formatFileSize(file.size), maxFilesize: privateFunctions.formatFileSize(maxSizeBytes)}))
                 }
@@ -345,7 +465,7 @@
                 return filesQueue;
             },
             getFile: function(hash) {
-                
+                return filesQueue.filter(file => file.hash === hash);
             },
             removeFiles: function() {
                 
