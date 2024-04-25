@@ -9,6 +9,7 @@
                 method: 'POST',
                 timeout: null,
                 headers: null,
+                customParams: null,
                 withCredentials: false,
                 multipleUpload: false,
                 parallelUploads: 2,
@@ -28,6 +29,11 @@
             },
             styles: {
                 progressBarColor: 'rgba(245,158,11,1)',
+                icons: {
+                    added: null,
+                    error: null,
+                    success: null
+                }
             },
             lang: {
                 message: 'Drag or click to add files here',
@@ -40,13 +46,13 @@
                 onInit: () => {},
                 onDestroy: () => {},
                 onRestart: () => {},
-                onFileAccepted: () => {},
-                onFileError: () => {},
-                onFileAdded: () => {},
-                onFileEnqueued: () => {},
-                onUploadSuccess: () => {},
-                onUploadError: () => {},
-                onUploadProgress: () => {},
+                onFileAccepted: (fileObject) => {},
+                onFileError: (fileObject) => {},
+                onFileAdded: (fileObject) => {},
+                onFileEnqueued: (fileObject) => {},
+                onUploadSuccess: (fileObject, response, status) => {},
+                onUploadError: (fileObject, response, status) => {},
+                onUploadProgress: (fileObject, percentage) => {},
             }
         }, options);
 
@@ -55,6 +61,49 @@
                 if (settings.debug) {
                     console.log(log);
                 }
+            },
+            addFile: function (file) {
+                const maxFilesize = settings.maxFilesize;
+                const filesizeBase = settings.filesizeBase;
+                const maxSizeBytes = maxFilesize * filesizeBase * filesizeBase;
+                if (
+                    settings.maxFiles &&
+                    filesQueue.length >= settings.maxFiles
+                ) {
+                    return false;
+                }
+                var fileStatus = 'accepted';
+                var errors = [];
+                const fileHash = privateFunctions.createFileHash();
+
+                if (
+                    settings.maxFilesize &&
+                    file.size > maxSizeBytes
+                ) {
+                    fileStatus = 'error';
+                    errors.push(privateFunctions.translateMessages('errors.maxFilesize', {filesize: privateFunctions.formatFileSize(file.size), maxFilesize: privateFunctions.formatFileSize(maxSizeBytes)}))
+                }
+
+                const acceptedFiles = settings.acceptedFiles;
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+                if (acceptedFiles && acceptedFiles.split(',').map(ext => ext.trim()).indexOf(fileExtension) === -1) {
+                    fileStatus = 'error';
+                    errors.push(privateFunctions.translateMessages('errors.acceptedFiles', {acceptedFiles: acceptedFiles, fileExtension: fileExtension}))
+                }
+
+                const fileObject = {
+                    file: file,
+                    status: fileStatus,
+                    hash: fileHash,
+                    errors, errors
+                };
+                if (fileStatus === 'accepted') {
+                    settings.events.onFileAccepted(fileObject);
+                } else {
+                    settings.events.onFileError(fileObject);
+                }
+                privateFunctions.debugLog({'addFile': fileObject});
+                filesQueue.push(fileObject);
             },
             appendFilesToList: async function() {
                 const $fileListDiv = $element.find('.df-files');
@@ -108,6 +157,8 @@
                     filesQueue[i].status = newStatus;
                     filesQueue[i].displayed = true;
                     filesQueue[i].$element = template;
+                    settings.events.onFileAdded(filesQueue[i]);
+                    privateFunctions.debugLog({'appendFileToList': filesQueue[i]});
                 }
 
                 privateFunctions.enqueueFiles();
@@ -127,9 +178,9 @@
             },
             getStatusIcon: function(status) {
                 var statusIcons = {
-                    added: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(245,158,11,1)"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM13 12H17V14H11V7H13V12Z"></path></svg>',
-                    error: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(239,68,68,1)"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 15H13V17H11V15ZM11 7H13V13H11V7Z"></path></svg>',
-                    success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(61,178,148,1)"><path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"></path></svg>',
+                    added: settings.styles.icons.added ?? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(245,158,11,1)"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM13 12H17V14H11V7H13V12Z"></path></svg>',
+                    error: settings.styles.icons.error ?? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(239,68,68,1)"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20ZM11 15H13V17H11V15ZM11 7H13V13H11V7Z"></path></svg>',
+                    success: settings.styles.icons.success ?? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="rgba(61,178,148,1)"><path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"></path></svg>',
                 };
         
                 return statusIcons[status] || '';
@@ -205,6 +256,8 @@
     
                             filesQueue[i].$progressBar = $progressBar;
                             filesQueue[i].status = 'enqueued';
+                            settings.events.onFileEnqueued(filesQueue[i]);
+                            privateFunctions.debugLog({'enqueueFile': filesQueue[i]});
                         }
                     }
                     
@@ -226,6 +279,8 @@
                             $(fileObject.$element).find('.df-file-status').html(statusIcon);
     
                             filesQueue[i].status = newStatus;
+                            settings.events.onFileEnqueued(filesQueue[i]);
+                            privateFunctions.debugLog({'enqueueFile': filesQueue[i]});
                         }
                     }
                 }
@@ -234,12 +289,16 @@
                 const multipleUpload = settings.request.multipleUpload;
                 const parallelUploads = settings.request.parallelUploads;
                 const enqueuedFiles = filesQueue.filter(file => file.status === 'enqueued');
+                if (enqueuedFiles.length === 0) {
+                    return false;
+                }
                 enqueuedFiles.forEach(enqueuedFile => {
                     const fileToUpdate = filesQueue.find(file => file.hash === enqueuedFile.hash);
                     if (fileToUpdate) {
                         fileToUpdate.status = 'processing';
                     }
                 });
+                privateFunctions.debugLog({'proccessQueue': enqueuedFiles});
                 const filesToSend = [];
             
                 if (!multipleUpload) {
@@ -261,8 +320,7 @@
                 }
             },
             sendRequest: function(files) {
-                console.log('Sending request with files:', files);
-
+                privateFunctions.debugLog({'sendRequest': files});
                 var formData = new FormData();
 
                 if (!settings.maxFiles || settings.maxFiles > 1) {
@@ -275,27 +333,33 @@
 
                 var xhr = new XMLHttpRequest();
 
-                xhr.timeout = settings.request.timeout??0; 
+                files.forEach(function(file) {
+                    file.xhr = xhr;
+                });
+
+                xhr.timeout = settings.request.timeout??0;
+                xhr.withCredentials = settings.request.withCredentials;
 
                 xhr.upload.addEventListener('progress', function(event) {
-                    console.log(event);
                     if (event.lengthComputable) {
                         files.forEach(function(file) {
                             if (file.status === 'processing') {
-                                console.log(file, event.loaded, file.file.size);
                                 var percentComplete =  Math.floor((event.loaded / event.total) * 100);
                                 privateFunctions.updateFileProgress(file, percentComplete);
+                                settings.events.onUploadProgress(file, percentComplete);
+                                privateFunctions.debugLog({'xhr_progress': [file, percentComplete]});
                             }
                         });
                     }
                 });
 
                 xhr.addEventListener('load', function() {
-                    if (xhr.status === 200) {
+                    if ([200, 201, 202, 203, 204, 205, 206, 207, 208, 226].includes(xhr.status)) {
                         files.forEach(function(file) {
                             if (file.status === 'processing') {
                                 file.status = 'success';
                                 privateFunctions.updateFileProgress(file, 100);
+                                settings.events.onUploadSuccess(file, xhr.response, xhr.status);
                             }
                         });
                     } else {
@@ -303,32 +367,48 @@
                             if (file.status === 'processing') {
                                 file.status = 'error';
                                 privateFunctions.updateFileProgress(file, 100);
+                                settings.events.onUploadError(file, xhr.response, xhr.status);
                             }
                         });
                     }
-
-                    // console.log('Request concluída:', xhr.responseText);
+                    privateFunctions.debugLog({'xhr_load': [files, xhr]});
                 });
 
                 xhr.addEventListener('timeout', function() {
-                    console.log('Timeout da request');
-                });
-
-                xhr.addEventListener('error', function() {
-                    console.log('Erro na request');
-                    // Aqui você pode adicionar o código para lidar com a falha da request
-                    // Por exemplo, atualizar o status dos arquivos para error
                     files.forEach(function(file) {
                         if (file.status === 'processing') {
                             file.status = 'error';
                             privateFunctions.updateFileProgress(file, 100);
+                            settings.events.onUploadError(file, xhr.response, xhr.status);
                         }
                     });
+                    privateFunctions.debugLog({'xhr_timeout': [files, xhr]});
+                });
+
+                xhr.addEventListener('error', function() {
+                    files.forEach(function(file) {
+                        if (file.status === 'processing') {
+                            file.status = 'error';
+                            privateFunctions.updateFileProgress(file, 100);
+                            settings.events.onUploadError(file, xhr.response, xhr.status);
+                        }
+                    });
+                    privateFunctions.debugLog({'xhr_error': [files, xhr]});
+                });
+
+                xhr.addEventListener('abort', function() {
+                    files.forEach(function(file) {
+                        if (file.status === 'processing') {
+                            file.status = 'error';
+                            privateFunctions.updateFileProgress(file, 100);
+                            settings.events.onUploadError(file, xhr.response, xhr.status);
+                        }
+                    });
+                    privateFunctions.debugLog({'xhr_abort': [files, xhr]});
                 });
 
                 xhr.open(settings.request.method, settings.url, true);
 
-                console.log('settings.request.headers', settings.request.headers);
                 if (
                     (settings.request.headers) &&
                     (typeof settings.request.headers === 'object')
@@ -341,6 +421,16 @@
 
                 xhr.setRequestHeader('Cache-Control', 'no-cache');
 
+                if (
+                    (settings.request.customParams) &&
+                    (typeof settings.request.customParams === 'object')
+                ) {
+                    for (const key in settings.request.customParams) {
+                        const customParamValue = settings.request.customParams[key];
+                        formData.append(key, customParamValue);
+                    }
+                }
+
                 xhr.send(formData);
             },
             updateFileProgress: function(file, percentage) {
@@ -352,7 +442,6 @@
                 privateFunctions.updateRequestProgressBar(file, percentage);
             },
             updateRequestProgressBar: function(file, percentage) {
-                console.log(file, percentage);
                 let bgColor = '';
                 if (file.status === 'processing') {
                     bgColor = settings.styles.progressBarColor;
@@ -384,11 +473,15 @@
                 $element.html($dfContainerDiv);
                 var $dropArea = $element.find('.df-drop-area');
                 $dropArea.on('click', function(e) {
-                    var $fileInput = $('<input type="file">');
+                    var $fileInput = $('<input type="file" ' + (settings.maxFiles && settings.maxFiles === 1 ? '' : 'multiple') + '>');
                     $fileInput.on('change', function(e) {
                         uploadedFiles = e.target.files;
-                        // settings.onDrop(uploadedFiles);
-                        methods.addFiles(uploadedFiles);
+                        for (let i = 0; i < uploadedFiles.length; i++) {
+                            const file = uploadedFiles[i];
+                            privateFunctions.addFile(file);
+                        }
+        
+                        privateFunctions.appendFilesToList();
                     });
                     $fileInput.click();
                 });
@@ -399,8 +492,12 @@
                     }).on('drop', function(e) {
                         e.preventDefault();
                         uploadedFiles = e.originalEvent.dataTransfer.files;
-                        // settings.onDrop(uploadedFiles);
-                        methods.addFiles(uploadedFiles);
+                        for (let i = 0; i < uploadedFiles.length; i++) {
+                            const file = uploadedFiles[i];
+                            privateFunctions.addFile(file);
+                        }
+        
+                        privateFunctions.appendFilesToList();
                     });
                 } else {
                     $dropArea.on('drop dragover dragenter', function(e) {
@@ -409,72 +506,66 @@
                     });
                 }
 
+                settings.events.onInit();
                 privateFunctions.debugLog('dropfilesUploader init');
             },
             destroy: function() {
+                methods.abortUploads();
+                methods.removeFiles();
+                $element.children().remove();
+                settings.events.onDestroy();
                 privateFunctions.debugLog('dropfilesUploader destroy');
             },
             restart: function() {
+                methods.destroy();
+                methods.init();
+                settings.events.onRestart();
                 privateFunctions.debugLog('dropfilesUploader restart');
             },
             enqueueFiles: function() {
                 privateFunctions.enqueueFiles();
+                return true;
             },
             proccessQueue: function() {
                 privateFunctions.proccessQueue();
-            },
-            addFile: function(file) {
-                const maxFilesize = settings.maxFilesize;
-                const filesizeBase = settings.filesizeBase;
-                const maxSizeBytes = maxFilesize * filesizeBase * filesizeBase;
-                var fileStatus = 'accepted';
-                var errors = [];
-                const fileHash = privateFunctions.createFileHash();
-
-                if (
-                    settings.maxFilesize &&
-                    file.size > maxSizeBytes
-                ) {
-                    fileStatus = 'error';
-                    errors.push(privateFunctions.translateMessages('errors.maxFilesize', {filesize: privateFunctions.formatFileSize(file.size), maxFilesize: privateFunctions.formatFileSize(maxSizeBytes)}))
-                }
-
-                const acceptedFiles = settings.acceptedFiles;
-                const fileExtension = file.name.split('.').pop().toLowerCase();
-                if (acceptedFiles && acceptedFiles.split(',').map(ext => ext.trim()).indexOf(fileExtension) === -1) {
-                    fileStatus = 'error';
-                    errors.push(privateFunctions.translateMessages('errors.acceptedFiles', {acceptedFiles: acceptedFiles, fileExtension: fileExtension}))
-                }
-
-                filesQueue.push({
-                    file: file,
-                    status: fileStatus,
-                    hash: fileHash,
-                    errors, errors
-                });
-            },
-            addFiles: function(files) {
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    methods.addFile(file);
-                }
-
-                privateFunctions.appendFilesToList();
+                return true;
             },
             getFiles: function() {
-                return filesQueue;
+                return filesQueue.map(function (file) {
+                    return { ...file };
+                });
             },
             getFile: function(hash) {
-                return filesQueue.filter(file => file.hash === hash);
+                var file = filesQueue.find(function (f) {
+                    return f.hash === hash;
+                });
+                if (file) {
+                    return { ...file };
+                }
+                return null;
             },
             removeFiles: function() {
-                
+                methods.abortUploads();
+                filesQueue.length = 0;
+                $element.find('.df-files').children().remove();
+                return true;
             },
             removeFile: function(hash) {
-                console.log('removeFile');
+                for (let i = 0; i < filesQueue.length; i++) {
+                    if (filesQueue[i].hash === hash) {
+                        filesQueue[i].xhr.abort();
+                        filesQueue[i].$element.remove();
+                        filesQueue.splice(i, 1);
+                        break;
+                    }
+                }
+                return true;
             },
-            abortUpload: function() {
-
+            abortUploads: function() {
+                for (let i = 0; i < filesQueue.length; i++) {
+                    filesQueue[i].xhr.abort();
+                }
+                return true;
             },
         };
 
@@ -484,12 +575,11 @@
             restart: methods.restart,
             enqueueFiles: methods.enqueueFiles,
             proccessQueue: methods.proccessQueue,
-            addFiles: methods.addFiles,
             getFiles: methods.getFiles,
             getFile: methods.getFile,
             removeFiles: methods.removeFiles,
             removeFile: methods.removeFile,
-            abortUpload: methods.abortUpload,
+            abortUploads: methods.abortUploads,
         };
     };
 
@@ -503,7 +593,7 @@
             }
             return pluginInstance;
         } else if (typeof pluginInstance[methodOrOptions] === 'function') {
-            return pluginInstance[methodOrOptions].apply(pluginInstance, args);
+            return pluginInstance[methodOrOptions].call(pluginInstance, args);
         } else {
             $.error('Method ['+methodOrOptions+'] does not exist or is not a function. Please read the documentation!');
         }
