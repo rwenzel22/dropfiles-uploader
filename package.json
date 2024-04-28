@@ -1,0 +1,26 @@
+{
+  "name": "dropfiles-uploader",
+  "version": "1.0.0",
+  "description": "Smart and sophisticated jQuery plugin for file upload",
+  "devDependencies": {
+    "grunt": "^1.6.1",
+    "grunt-contrib-concat": "^2.1.0",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-cssmin": "^5.0.0",
+    "grunt-contrib-jshint": "^3.2.0",
+    "grunt-contrib-nodeunit": "^5.0.0",
+    "grunt-contrib-uglify": "^5.2.2",
+    "jshint-stylish": "^2.2.1"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rwenzel22/dropfiles-uploader.git"
+  },
+  "author": "Robson Wenzel",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rwenzel22/dropfiles-uploader/issues"
+  },
+  "homepage": "https://github.com/rwenzel22/dropfiles-uploader#readme"
+}
