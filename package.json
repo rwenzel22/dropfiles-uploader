@@ -1,5 +1,5 @@
 {
-  "name": "dropfiles-uploader",
+  "name": "@rwenzel22/dropfiles-uploader",
   "version": "1.1.0",
   "description": "Smart and sophisticated jQuery plugin for file upload",
   "devDependencies": {
@@ -18,10 +18,12 @@
     "type": "git",
     "url": "https://github.com/rwenzel22/dropfiles-uploader.git"
   },
+  "keywords": ["jQuery", "uploader", "jQuery-plugin", "ajax", "file-upload", "drag-and-drop"],
   "author": "RWenzel <https://github.com/rwenzel22>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/rwenzel22/dropfiles-uploader/issues"
   },
-  "homepage": "https://github.com/rwenzel22/dropfiles-uploader#readme"
+  "homepage": "https://github.com/rwenzel22/dropfiles-uploader#readme",
+  "main": "index.html"
 }
