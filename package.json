@@ -16,9 +16,16 @@
   "scripts": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/rwenzel22/dropfiles-uploader.git"
+    "url": "git+https://github.com/rwenzel22/dropfiles-uploader.git"
   },
-  "keywords": ["jQuery", "uploader", "jQuery-plugin", "ajax", "file-upload", "drag-and-drop"],
+  "keywords": [
+    "jQuery",
+    "uploader",
+    "jQuery-plugin",
+    "ajax",
+    "file-upload",
+    "drag-and-drop"
+  ],
   "author": "RWenzel <https://github.com/rwenzel22>",
   "license": "MIT",
   "bugs": {
