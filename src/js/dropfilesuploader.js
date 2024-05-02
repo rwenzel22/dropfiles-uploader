@@ -1,8 +1,8 @@
 /*
-Dropfiles Uploader plugin
-Author: Robson Wenzel
-MIT License
-Copy 2024
+    Dropfiles Uploader
+    Version: 1.1.0
+    Author: rwenzel22 https://github.com/rwenzel22
+    License: MIT
 */
 
 (function($) {
@@ -102,7 +102,7 @@ Copy 2024
                     file: file,
                     status: fileStatus,
                     hash: fileHash,
-                    errors, fileErrors
+                    errors: fileErrors
                 };
                 if (fileStatus === 'accepted') {
                     settings.events.onFileAccepted(fileObject);

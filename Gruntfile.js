@@ -1,5 +1,8 @@
 module.exports = function(grunt) {
   grunt.initConfig({
+    clean: {
+      css: ['dist/'] // padrão dos arquivos CSS a serem removidos antes da compilação
+    },
     copy: {
       main: {
         expand: true,
@@ -49,11 +52,12 @@ module.exports = function(grunt) {
     }
   });
 
+  grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-jshint');
 
-  grunt.registerTask('default', ['copy', 'cssmin', 'concat', 'uglify', 'jshint']);
+  grunt.registerTask('default', ['clean', 'copy', 'cssmin', 'concat', 'uglify', 'jshint']);
 };
