@@ -2,6 +2,7 @@
 
 Dropfiles Uploader é um plugin jQuery simples e altamente customizável que ajuda você a realizar o envio de arquivos em seus formulários da web.
 
+- [👀 Demo]([https://dropfiles-uploader.gitbook.io](https://dropfiles-uploader-example.netlify.app/)
 - [📚 Documentação](https://dropfiles-uploader.gitbook.io)
 
 ## Diferenciais do Dropfiles Uploader ✅
