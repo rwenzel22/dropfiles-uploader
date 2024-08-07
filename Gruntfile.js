@@ -1,7 +1,7 @@
 module.exports = function(grunt) {
   grunt.initConfig({
     clean: {
-      css: ['dist/'] // padrão dos arquivos CSS a serem removidos antes da compilação
+      css: ['dist/']
     },
     copy: {
       main: {

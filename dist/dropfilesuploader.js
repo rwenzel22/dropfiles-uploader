@@ -1,15 +1,17 @@
 /*
-    Dropfiles Uploader
-    Version: 1.1.0
+    Dropfiles Uploader Plugin
+    Version: 1.2.0
     Author: rwenzel22 https://github.com/rwenzel22
     License: MIT
+
+    🙏 Pray for Rio Grande do Sul - Brazil
 */
 
 (function($) {
     var plugin = function(element, options) {
         var $element = $(element);
         var filesQueue = [];
-        var settings = $.extend({
+        var settings = $.extend(true, {
             url: null,
             autoProcessQueue: true,
             request: {
@@ -137,28 +139,7 @@
                         thumbnail = `<div class="df-file-thumbnail" style="width:${settings.thumbnails.width}px; min-width:${settings.thumbnails.width}px; height:${settings.thumbnails.height}px; object-fit:${settings.thumbnails.object_fit};">${thumbnailContent}</div>`;
                     }
                     
-                    const template = $('\
-                        <div class="df-file">\
-                            <div class="df-file-wrapper">\
-                                ' + thumbnail + '\
-                                <div class="df-file-data">\
-                                    <div class="df-file-info">\
-                                        <div class="df-file-name">\
-                                            <span>\
-                                            ' + fileObject.file.name + '\
-                                            </span>\
-                                            <small>\
-                                            ' + privateFunctions.formatFileSize(fileObject.file.size) + '\
-                                            </small>\
-                                        </div>\
-                                        <div class="df-file-status">\
-                                            ' + statusIcon + '\
-                                        </div>\
-                                    </div>\
-                                </div>\
-                            </div>\
-                        </div>\
-                    ');
+                    const template = $(`<div class="df-file"><div class="df-file-wrapper">${thumbnail}<div class="df-file-data"><div class="df-file-info"><div class="df-file-name"><span>${fileObject.file.name}</span><small>${privateFunctions.formatFileSize(fileObject.file.size)}</small></div><div class="df-file-status">${statusIcon}</div></div></div></div></div>`);
                     $fileListDiv.append(template);
                     
                     filesQueue[i].status = newStatus;
@@ -253,11 +234,7 @@
                     for (let i = 0; i < filesQueue.length; i++) {
                         const fileObject = filesQueue[i];
                         if (fileObject.status === 'added') {
-                            const $progressBar = $(`
-                                <div class="df-file-progress-container">
-                                    <div class="df-file-progress-bar" style="width: 0;"></div>
-                                </div>
-                            `);
+                            const $progressBar = $(`<div class="df-file-progress-container"><div class="df-file-progress-bar" style="width: 0;"></div></div>`);
                             $(fileObject.$element).find('.df-file-data').append($progressBar);
                             $(fileObject.$element).find('.df-file-status').html('0%');
     
@@ -306,23 +283,17 @@
                     }
                 });
                 privateFunctions.debugLog({'proccessQueue': enqueuedFiles});
-                const filesToSend = [];
             
                 if (!multipleUpload) {
-                    for (let i = 0; i < enqueuedFiles.length; i++) {
-                        filesToSend.push(enqueuedFiles[i]);
-                    }
-                    privateFunctions.sendRequest(filesToSend);
+                    privateFunctions.sendRequest(enqueuedFiles);
                 } else if (parallelUploads && parallelUploads > 0) {
                     for (let i = 0; i < enqueuedFiles.length; i += parallelUploads) {
                         const chunk = enqueuedFiles.slice(i, i + parallelUploads);
-                        const chunkFiles = chunk.map(item => item);
-                        privateFunctions.sendRequest(chunkFiles);
+                        privateFunctions.sendRequest(chunk);
                     }
                 } else {
                     for (let i = 0; i < enqueuedFiles.length; i++) {
-                        const file = enqueuedFiles[i];
-                        privateFunctions.sendRequest([file]);
+                        privateFunctions.sendRequest([enqueuedFiles[i]]);
                     }
                 }
             },
@@ -330,12 +301,16 @@
                 privateFunctions.debugLog({'sendRequest': files});
                 var formData = new FormData();
 
-                if (!settings.maxFiles || settings.maxFiles > 1) {
-                    for (var i = 0; i < files.length; i++) {
-                        formData.append(settings.paramName+'[]', files[i].file);
-                    } 
+                if (files.length === 1) {
+                    if (settings.request.parallelUploads === 1) {
+                        formData.append(settings.paramName, files[0].file);
+                    } else {
+                        formData.append(settings.paramName + '[]', files[0].file);
+                    }
                 } else {
-                    formData.append(settings.paramName, files.file);
+                    for (var i = 0; i < files.length; i++) {
+                        formData.append(settings.paramName + '[]', files[i].file);
+                    }
                 }
 
                 var xhr = new XMLHttpRequest();
@@ -344,8 +319,8 @@
                     file.xhr = xhr;
                 });
 
-                xhr.timeout = settings.request.timeout??0;
-                xhr.withCredentials = settings.request.withCredentials;
+                xhr.timeout = settings.request.timeout ?? 0;
+                xhr.withCredentials = settings.request.withCredentials ?? false;
 
                 xhr.upload.addEventListener('progress', function(event) {
                     if (event.lengthComputable) {
@@ -361,7 +336,7 @@
                 });
 
                 xhr.addEventListener('load', function() {
-                    if ([200, 201, 202, 203, 204, 205, 206, 207, 208, 226].includes(xhr.status)) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
                         files.forEach(function(file) {
                             if (file.status === 'processing') {
                                 file.status = 'success';
@@ -469,14 +444,7 @@
                 if ($element.prop('tagName').toString().toLowerCase() !== 'div') {
                     return $.error('The element is not a div tag');
                 }
-                const $dfContainerDiv = $(`
-                    <div class="df-container">
-                        <div class="df-drop-area">
-                            <div class="df-message">${settings.lang.message}</div>
-                        </div>
-                        <div class="df-files"></div>
-                    </div>
-                `);
+                const $dfContainerDiv = $(`<div class="df-container"><div class="df-drop-area"><div class="df-message">${settings.lang.message}</div></div><div class="df-files"></div></div>`);
                 $element.html($dfContainerDiv);
                 var $dropArea = $element.find('.df-drop-area');
                 $dropArea.on('click', function(e) {
@@ -560,7 +528,9 @@
             removeFile: function(hash) {
                 for (let i = 0; i < filesQueue.length; i++) {
                     if (filesQueue[i].hash === hash) {
-                        filesQueue[i].xhr.abort();
+                        if (filesQueue[i].xhr) {
+                            filesQueue[i].xhr.abort();
+                        }
                         filesQueue[i].$element.remove();
                         filesQueue.splice(i, 1);
                         break;
@@ -570,7 +540,9 @@
             },
             abortUploads: function() {
                 for (let i = 0; i < filesQueue.length; i++) {
-                    filesQueue[i].xhr.abort();
+                    if (filesQueue[i].xhr) {
+                        filesQueue[i].xhr.abort();
+                    }
                 }
                 return true;
             },
